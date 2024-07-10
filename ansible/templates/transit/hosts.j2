@@ -1,0 +1,41 @@
+{% set id = (inventory_hostname | regex_search('[0-9]+')) %}
+{% set network = id + '.' + id + '.0.0/16' %}
+switchport default mode routed
+!
+hostname {{ inventory_hostname | upper }}
+!
+interface {{ transit_interface }}
+   ip address {{ shared_network | ansible.utils.ipaddr(id) }}
+!
+interface Loopback0
+   ip address {{ network | ansible.utils.ipaddr(1) }}
+!
+ip routing
+!
+{% if inventory_hostname[0] == 'c' -%}
+ip as-path access-list LOCAL permit ^$ any
+!
+route-map LOCAL permit 10
+   match as-path LOCAL
+!
+{% endif -%}
+router bgp {{ asn }}
+   router-id {{ network | ansible.utils.ipaddr(1) | ansible.utils.ipaddr('address') }}
+   no bgp default ipv4-unicast
+   {% for item in ansible_play_hosts -%}
+   {% if hostvars[item].transit_role == 'rr' -%}
+   {% set neighbor = shared_network | ansible.utils.ipaddr(item | regex_search('[0-9]+')) | ansible.utils.ipaddr('address') %}
+   neighbor RR peer group
+   neighbor RR remote-as {{ hostvars[item].asn }}
+   neighbor {{ neighbor }} peer group RR
+   neighbor {{ neighbor }} description {{ item | upper }}
+   {% endif -%}
+   {% endfor -%}
+   !
+   address-family ipv4
+      neighbor RR activate
+      {% if inventory_hostname[0] == 'c' -%}
+      neighbor RR route-map LOCAL out
+      {% endif -%}
+      network {{ network }}
+!

@@ -1,0 +1,8 @@
+- name: Deploy external config
+  hosts: external
+  gather_facts: false
+  tasks:
+    - name: Deploy hosts config
+      arista.eos.eos_config:
+        src: external/hosts.j2
+        save_when: changed

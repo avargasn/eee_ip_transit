@@ -1,0 +1,8 @@
+- name: Deploy shared network config
+  hosts: shared_network
+  gather_facts: false
+  tasks:
+    - name: Deploy config
+      arista.eos.eos_config:
+        src: templates/shared_network/pe.j2
+        save_when: changed

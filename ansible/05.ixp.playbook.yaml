@@ -1,0 +1,21 @@
+- name: Deploy IXP config
+  hosts: ixp
+  gather_facts: false
+  tasks:
+    - name: Deploy hosts config
+      arista.eos.eos_config:
+        src: ixp/hosts.j2
+        save_when: changed
+      when: ixp_role == 'member'
+
+    - name: Deploy RS config
+      arista.eos.eos_config:
+        src: ixp/rs.j2
+        save_when: changed
+      when: ixp_role == "rs"
+
+    - name: Deploy PE config
+      arista.eos.eos_config:
+        src: ixp/pe.j2
+        save_when: changed
+      when: ixp_role == "pe"

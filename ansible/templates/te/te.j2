@@ -1,0 +1,37 @@
+{% for client in rr_clients %}
+no ip community-list {{ client | upper }}_DENY
+no ip community-list {{ client | upper }}_ALLOW
+{% if rr_clients[client].deny is defined and rr_clients[client].deny is not none %}
+{% for item in rr_clients[client].deny %}
+ip community-list {{ client | upper }}_DENY permit {{ asn }}:{{ item | regex_search('[0-9]+') }}
+{% endfor %}
+{% endif %}
+{% if rr_clients[client].allow is defined and rr_clients[client].allow is not none %}
+{% for item in rr_clients[client].allow %}
+ip community-list {{ client | upper }}_DENY permit {{ asn }}:{{ item | regex_search('[0-9]+') }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+!
+{% for client in rr_clients %}
+{# no route-map {{ client | upper }}_OUT
+! #}
+{% if rr_clients[client].deny is defined %}
+route-map {{ client | upper }}_OUT deny 10
+   match community {{ client | upper  }}_DENY
+!
+{% endif %}
+route-map {{ client | upper }}_OUT permit 20
+{% if rr_clients[client].allow is defined and rr_clients[client].allow is not none %}
+   match community {{ client | upper  }}_ALLOW
+{% else %}
+   no match community {{ client | upper  }}_ALLOW
+{% endif %}
+!
+{% endfor %}
+router bgp {{ asn }}
+{% for item in rr_clients %}
+{% set neighbor = shared_network | ansible.utils.ipaddr(item | regex_search('[0-9]+')) | ansible.utils.ipaddr('address') %}
+   neighbor {{ neighbor }} route-map {{ item | upper }}_OUT out
+{% endfor %}
+!

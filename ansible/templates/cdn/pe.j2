@@ -1,0 +1,10 @@
+{% set id = (cdn_node | regex_search('[0-9]+')) %}
+{% set network = '%s.%s.0.0/24' | format(id, id) %}
+interface {{ cdn_interface }}
+   vrf TRANSIT
+   ip address {{ network | ansible.utils.ipaddr(254) }}
+!
+router bgp {{ asn }}
+   vrf TRANSIT
+      network {{ network }}
+!

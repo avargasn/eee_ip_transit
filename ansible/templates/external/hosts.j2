@@ -1,0 +1,45 @@
+{% set id = inventory_hostname | regex_search('[0-9]+') | int %}
+{% set network = '%s.%s.0.0/16' | format(id, id) %}
+switchport default mode routed
+!
+hostname {{ inventory_hostname | upper }}
+!
+{% for k, v in neighbors.items() -%}
+{% set neighbor_id = v.neighbor | regex_search('[0-9]+') | int %}
+interface {{ k }}
+   ip address {{ v.address | ansible.utils.next_nth_usable((id > neighbor_id) | int) }}/{{ v.address | ansible.utils.ipaddr('prefix') }}
+!
+{% endfor -%}
+interface Loopback0
+   ip address {{ network | ansible.utils.ipaddr(1) }}
+!
+ip routing
+!
+{% if inventory_hostname[0] in ['c', 'p'] -%}
+ip as-path access-list LOCAL permit ^$ any
+!
+route-map LOCAL permit 10
+   match as-path LOCAL
+!
+{% endif -%}
+router bgp {{ id }}
+   router-id {{ network | ansible.utils.ipaddr(1) | ansible.utils.ipaddr('address') }}
+   no bgp default ipv4-unicast
+   {% for k, v in neighbors.items() -%}
+   {% set neighbor_id = v.neighbor | regex_search('[0-9]+') | int %}
+   {% set neighbor = v.address | ansible.utils.next_nth_usable((id < neighbor_id) | int) %}
+   neighbor {{ neighbor }} remote-as {{ hostvars[v.neighbor].asn }}
+   neighbor {{ neighbor }} description {{ v.neighbor | upper }}
+   {% endfor -%}
+   !
+   address-family ipv4
+      {% for k, v in neighbors.items() -%}
+      {% set neighbor_id = v.neighbor | regex_search('[0-9]+') | int %}
+      {% set neighbor = v.address | ansible.utils.next_nth_usable((id < neighbor_id) | int) %}
+      neighbor {{ neighbor }} activate
+      {% if inventory_hostname[0] in ['c', 'p'] -%}
+      neighbor {{ neighbor }} route-map LOCAL out
+      {% endif -%}
+      {% endfor -%}
+      network {{ network }}
+!

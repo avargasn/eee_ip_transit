@@ -1,0 +1,15 @@
+- name: Deploy CDN config
+  hosts: cdn
+  gather_facts: false
+  tasks:
+    - name: Deploy hosts config
+      arista.eos.eos_config:
+        src: cdn/hosts.j2
+        save_when: changed
+      when: cdn_role == 'cdn'
+
+    - name: Deploy PE config
+      arista.eos.eos_config:
+        src: cdn/pe.j2
+        save_when: changed
+      when: cdn_role == "pe"

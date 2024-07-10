@@ -1,0 +1,27 @@
+{% set id = (inventory_hostname | regex_search('[0-9]+')) %}
+vlan {{ vlan }}
+!
+vrf instance {{ vrf_name }}
+!
+interface Vlan{{ vlan }}
+   vrf {{ vrf_name }}
+   ip address {{ shared_network | ansible.utils.ipaddr(id) }}
+!
+ip routing vrf {{ vrf_name }}
+!
+router bgp {{ asn }}
+   neighbor RR peer group
+   neighbor RR remote-as {{ asn }}
+   neighbor RR next-hop-self
+   !
+   address-family ipv4
+      neighbor RR activate
+   !
+   vrf TRANSIT
+      {% for item in groups['transit'] -%}
+      {% if hostvars[item].transit_role == 'rr' -%}
+      neighbor {{ shared_network | ansible.utils.ipaddr(item | regex_search('[0-9]+')) | ansible.utils.ipaddr('address') }} peer group RR
+      neighbor {{ shared_network | ansible.utils.ipaddr(item | regex_search('[0-9]+')) | ansible.utils.ipaddr('address') }} description {{ item | upper }}
+      {% endif -%}
+      {% endfor -%}
+!

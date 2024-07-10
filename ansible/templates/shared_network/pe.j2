@@ -1,0 +1,18 @@
+{% for item in shared_network_interfaces -%}
+interface {{ item }}
+   switchport access vlan {{ vlan }}
+   switchport
+   spanning-tree portfast
+!
+{% endfor -%}
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan vlan {{ vlan }} vni 2{{ '%05d' | format(vlan) }}
+!
+router bgp {{ asn }}
+   vlan {{ vlan }}
+      rd auto
+      route-target both {{ asn }}:2{{ '%05d' | format(vlan) }}
+      redistribute learned
+      !
+!

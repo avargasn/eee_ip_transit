@@ -1,0 +1,23 @@
+{% set id = (inventory_hostname | regex_search('[0-9]+')) %}
+hostname {{ inventory_hostname | upper }}
+!
+vrf instance  {{ vrf_name }}
+!
+interface {{ ixp_interface }}
+   vrf  {{ vrf_name }}
+   ip address {{ ixp_network | ansible.utils.ipaddr(id) }}
+!
+ip routing vrf {{ vrf_name }}
+!
+router bgp {{ asn }}
+   vrf  {{ vrf_name }}
+      {% set neighbor_hostname =  (groups.ixp | map('extract', hostvars) | selectattr('ixp_role', 'eq', 'rs') | map(attribute='inventory_hostname'))[0] %}
+      {% set neighbor_id = (neighbor_hostname | regex_search('[0-9]+')) %}
+      {% set neighbor = ixp_network | ansible.utils.ipaddr(neighbor_id) | ansible.utils.ipaddr('address') %}
+      neighbor {{ neighbor }} remote-as {{ hostvars[neighbor_hostname].asn }}
+      neighbor {{ neighbor }} description {{ neighbor_hostname | upper }}
+      no neighbor {{ neighbor }} enforce-first-as
+      !
+      address-family ipv4
+         neighbor {{ neighbor }} activate
+!

@@ -1,0 +1,13 @@
+{% set id = (inventory_hostname | regex_search('[0-9]+')) %}
+{% set network = id + '.' + id + '.0.0/24' %}
+switchport default mode routed
+!
+hostname {{ inventory_hostname | upper }}
+!
+interface Ethernet1
+   ip address {{ network | ansible.utils.ipaddr(1) }}
+!
+ip routing
+!
+ip route 0.0.0.0/0 {{ network | ansible.utils.ipaddr(254) | ansible.utils.ipaddr('address') }}
+!

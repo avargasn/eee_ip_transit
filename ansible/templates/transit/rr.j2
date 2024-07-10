@@ -1,0 +1,58 @@
+{% set id = (inventory_hostname | regex_search('[0-9]+')) %}
+switchport default mode routed
+!
+hostname {{ inventory_hostname | upper }}
+!
+interface {{ transit_interface }}
+   no switchport
+   ip address {{ shared_network | ansible.utils.ipaddr(id) }}
+!
+interface Loopback0
+   ip address 198.18.255.{{ id }}/32
+!
+ip routing
+!
+route-map SELECTIVE_DOWNLOAD deny 10
+!
+{% for item in ansible_play_hosts -%}
+{% if hostvars[item].transit_role != 'rr' -%}
+ip community-list {{ item | upper }} permit {{ asn }}:{{ item | regex_search('[0-9]+') }}
+{% endif -%}
+{% endfor -%}
+!
+{% for item in ansible_play_hosts -%}
+{% if hostvars[item].transit_role != 'rr' %}
+route-map {{ item | upper }}_IN permit 10
+   no set community
+   set community {{ asn }}:{{ item | regex_search('[0-9]+') }}
+!
+{% endif -%}
+{% endfor -%}
+router bgp {{ asn }}
+   router-id 198.18.255.{{ id }}
+   no bgp default ipv4-unicast
+   bgp cluster-id 198.18.255.{{ id }}
+   bgp route install-map SELECTIVE_DOWNLOAD
+   maximum-paths 8
+   bgp additional-paths send ecmp
+   bgp bestpath as-path ignore
+   bgp bestpath skip peer type ebgp ibgp
+   {% for item in ansible_play_hosts -%}
+   {% set neighbor = shared_network | ansible.utils.ipaddr(item | regex_search('[0-9]+')) | ansible.utils.ipaddr('address') %}
+   {% if hostvars[item].transit_role != 'rr' -%}
+   neighbor {{ neighbor }} remote-as {{ hostvars[item].asn }}
+   neighbor {{ neighbor }} passive
+   neighbor {{ neighbor }} description {{ item | upper }}
+   neighbor {{ neighbor }} route-reflector-client
+   neighbor {{ neighbor }} route-map {{ item | upper }}_IN in
+   {% endif -%}
+   {% endfor -%}
+   !
+   address-family ipv4
+      {% for item in ansible_play_hosts -%}
+      {% set neighbor = shared_network | ansible.utils.ipaddr(item | regex_search('[0-9]+')) | ansible.utils.ipaddr('address') %}
+      {% if hostvars[item].transit_role != 'rr' -%}
+      neighbor {{ neighbor }} activate
+      {% endif -%}
+      {% endfor -%}
+!

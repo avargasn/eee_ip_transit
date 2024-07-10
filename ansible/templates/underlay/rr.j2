@@ -1,0 +1,51 @@
+{% set id = inventory_hostname | regex_search('[0-9]+') | int %}
+switchport default mode routed
+!
+hostname {{ inventory_hostname | upper }}
+!
+{% for interface in core_interfaces -%}
+interface {{ interface }}
+   mtu 9000
+   no switchport
+   ip address unnumbered Loopback0
+   isis enable ISIS
+   isis network point-to-point
+!
+{% endfor -%}
+interface Loopback0
+   ip address 198.18.255.{{ id }}/32
+   isis enable ISIS
+   isis passive
+!
+ip routing
+!
+router bgp {{ asn }}
+   router-id  198.18.255.{{ id }}
+   no bgp default ipv4-unicast
+   bgp cluster-id 198.18.255.{{ id }}
+   neighbor UNDERLAY peer group
+   neighbor UNDERLAY remote-as {{ asn }}
+   neighbor UNDERLAY update-source 198.18.255.{{ id }}
+   neighbor UNDERLAY send-community extended
+   {% for item in groups['bb'] -%}
+   neighbor 198.18.255.{{ item | regex_search('[0-9]+') }} peer group UNDERLAY
+   neighbor 198.18.255.{{ item | regex_search('[0-9]+') }} route-reflector-client
+   {% endfor -%}
+   {% for item in groups['rr'] -%}
+   {% if inventory_hostname != item -%}
+   neighbor 198.18.255.{{ item | regex_search('[0-9]+') }} peer group UNDERLAY
+   {% endif -%}
+   {% endfor -%}
+   !
+   address-family evpn
+      neighbor UNDERLAY activate
+   !
+!
+router isis ISIS
+   net 49.0002.0000.0000.{{ '%04d' | format(id) }}.00
+   is-type level-2
+   !
+   address-family ipv4 unicast
+      bfd all-interfaces
+   !
+!

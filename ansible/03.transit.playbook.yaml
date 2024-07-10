@@ -1,0 +1,21 @@
+- name: Deploy Transit config
+  hosts: transit
+  gather_facts: false
+  tasks:
+    - name: Deploy RR config
+      arista.eos.eos_config:
+        src: transit/rr.j2
+        save_when: changed
+      when: transit_role == "rr"
+
+    - name: Deploy hosts config
+      arista.eos.eos_config:
+        src: transit/hosts.j2
+        save_when: changed
+      when: transit_role not in ["rr", "pe"]
+
+    - name: Deploy PE config
+      arista.eos.eos_config:
+        src: transit/pe.j2
+        save_when: changed
+      when: transit_role == "pe"

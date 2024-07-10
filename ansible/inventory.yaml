@@ -1,0 +1,378 @@
+all:
+    vars:
+        ansible_ssh_common_args: '-o ProxyCommand="ssh -q root@192.168.86.3 -W %h:%p "'
+        ansible_connection: ansible.netcommon.network_cli
+        ansible_network_os: arista.eos.eos
+        ansible_user: admin
+        ansible_password: admin
+        ansible_become: true
+        ansible_become_method: enable
+        asn: 65001
+    hosts:
+        bb1:
+            ansible_host: 10.0.137.1
+        bb2:
+            ansible_host: 10.0.137.2
+        bb3:
+            ansible_host: 10.0.137.3
+        bb4:
+            ansible_host: 10.0.137.4
+        bb5:
+            ansible_host: 10.0.137.5
+        bb6:
+            ansible_host: 10.0.137.6
+        t7:
+            ansible_host: 10.0.137.7
+            asn: 7
+        t8:
+            ansible_host: 10.0.137.8
+            asn: 8
+        t9:
+            ansible_host: 10.0.137.9
+            asn: 9
+        t10:
+            ansible_host: 10.0.137.10
+            asn: 10
+        cdn11:
+            ansible_host: 10.0.137.11
+            asn: 11
+        cdn12:
+            ansible_host: 10.0.137.12
+            asn: 12
+        cdn13:
+            ansible_host: 10.0.137.13
+            asn: 13
+        c14:
+            ansible_host: 10.0.137.14
+            asn: 14
+        c15:
+            ansible_host: 10.0.137.15
+            asn: 15
+        c16:
+            ansible_host: 10.0.137.16
+            asn: 16
+        p17:
+            ansible_host: 10.0.137.17
+            asn: 17
+        p18:
+            ansible_host: 10.0.137.18
+            asn: 18
+        rs19:
+            ansible_host: 10.0.137.19
+            asn: 19
+        t20:
+            ansible_host: 10.0.137.20
+            asn: 20
+        t21:
+            ansible_host: 10.0.137.21
+            asn: 21
+        rr22:
+            ansible_host: 10.0.137.22
+            asn: 22
+        rr23:
+            ansible_host: 10.0.137.23
+            asn: 23
+    children:
+        bb:
+            vars:
+                core_interfaces:
+                    - Ethernet1
+                    - Ethernet2
+            hosts:
+                bb1:
+                bb2:
+                bb5:
+                bb6:
+        rr:
+            vars:
+                core_interfaces:
+                    - Ethernet1
+                    - Ethernet2
+                    - Ethernet3
+            hosts:
+                bb3:
+                bb4:
+        shared_network:
+            vars:
+                vlan: 50
+            hosts:
+                bb1:
+                    shared_network_interfaces:
+                        - Ethernet3
+                bb2:
+                    shared_network_interfaces:
+                        - Ethernet3
+                        - Ethernet4
+                bb3:
+                    shared_network_interfaces:
+                        - Ethernet5
+                bb4:
+                    shared_network_interfaces:
+                        - Ethernet5
+                        - Ethernet6
+                bb5:
+                    shared_network_interfaces:
+                        - Ethernet3
+                        - Ethernet4
+                bb6:
+                    shared_network_interfaces:
+                        - Ethernet3
+        transit:
+            vars:
+                vlan: 50
+                vrf_name: TRANSIT
+                shared_network: 198.18.50.0/24
+                transit_interface: Ethernet1
+            hosts:
+                bb1:
+                    transit_role: pe
+                    routed: true
+                bb3:
+                    transit_role: pe
+                    routed: true
+                bb4:
+                    transit_role: pe
+                    routed: true
+                bb6:
+                    transit_role: pe
+                    routed: true
+                t7:
+                    transit_role: transit
+                    asn: 7
+                t8:
+                    transit_role: transit
+                    asn: 8
+                t9:
+                    transit_role: transit
+                    asn: 9
+                t10:
+                    transit_role: transit
+                    asn: 10
+                c14:
+                    transit_role: customer
+                    asn: 14
+                c15:
+                    transit_role: customer
+                    asn: 15
+                c16:
+                    transit_role: customer
+                    asn: 16
+                rr22:
+                    transit_role: rr
+                    asn: 65001
+                rr23:
+                    transit_role: rr
+                    asn: 65001
+        cdn:
+            vars:
+                vrf_name: TRANSIT
+                cdn_interface: Ethernet4
+            hosts:
+                bb1:
+                    cdn_role: pe
+                    cdn_node: cdn12
+                bb4:
+                    cdn_role: pe
+                    cdn_node: cdn11
+                bb6:
+                    cdn_role: pe
+                    cdn_node: cdn13
+                cdn11:
+                    cdn_role: cdn
+                cdn12:
+                    cdn_role: cdn
+                cdn13:
+                    cdn_role: cdn
+        ixp:
+            vars:
+                vrf_name: TRANSIT
+                ixp_interface: Ethernet1
+                ixp_network: 19.0.0.0/24
+            hosts:
+                bb3:
+                    ixp_role: pe
+                    ixp_interface: Ethernet4
+                c16:
+                    ixp_role: member
+                    ixp_interface: Ethernet2
+                rs19:
+                    ixp_role: rs
+                p17:
+                    ixp_role: member
+                p18:
+                    ixp_role: member
+        external:
+            hosts:
+                t7:
+                    neighbors:
+                        Ethernet2:
+                            neighbor: t8
+                            address: 200.0.0.8/31
+                        Ethernet3:
+                            neighbor: t20
+                            address: 200.0.0.6/31
+                t8:
+                    neighbors:
+                        Ethernet2:
+                            neighbor: t7
+                            address: 200.0.0.8/31
+                        Ethernet3:
+                            neighbor: c14
+                            address: 200.0.0.10/31
+                        Ethernet4:
+                            neighbor: t21
+                            address: 200.0.0.12/31
+                t9:
+                    neighbors:
+                        Ethernet2:
+                            neighbor: t10
+                            address: 200.0.0.14/31
+                        Ethernet3:
+                            neighbor: t20
+                            address: 200.0.0.4/31
+                t10:
+                    neighbors:
+                        Ethernet2:
+                            neighbor: t9
+                            address: 200.0.0.14/31
+                        Ethernet3:
+                            neighbor: t21
+                            address: 200.0.0.16/31
+                c14:
+                    neighbors:
+                        Ethernet2:
+                            neighbor: t8
+                            address: 200.0.0.10/31
+                p17:
+                    neighbors:
+                        Ethernet2:
+                            neighbor: t20
+                            address: 200.0.0.0/31
+                p18:
+                    neighbors:
+                        Ethernet2:
+                            neighbor: t20
+                            address: 200.0.0.2/31
+                t20:
+                    neighbors:
+                        Ethernet1:
+                            neighbor: p17
+                            address: 200.0.0.0/31
+                        Ethernet2:
+                            neighbor: p18
+                            address: 200.0.0.2/31
+                        Ethernet3:
+                            neighbor: t9
+                            address: 200.0.0.4/31
+                        Ethernet4:
+                            neighbor: t7
+                            address: 200.0.0.6/31
+                        Ethernet5:
+                            neighbor: t21
+                            address: 200.0.0.18/31
+                t21:
+                    neighbors:
+                        Ethernet1:
+                            neighbor: t10
+                            address: 200.0.0.16/31
+                        Ethernet2:
+                            neighbor: t8
+                            address: 200.0.0.12/31
+                        Ethernet3:
+                            neighbor: t20
+                            address: 200.0.0.18/31
+        te:
+            vars:
+                rr_clients:
+                    t7:
+                        allow:
+                        deny:
+                            - t8
+                            - t9
+                            - t10
+                            - bb3
+                            - c15
+                            - c16
+                    t8:
+                        allow:
+                        deny:
+                            - t7
+                            - t9
+                            - t10
+                            - bb3
+                            - c15
+                    t9:
+                        allow:
+                        deny:
+                            - t7
+                            - t8
+                            - t10
+                            - bb3
+                            - c15
+                            - c16
+                    t10:
+                        allow:
+                        deny:
+                            - t7
+                            - t8
+                            - t9
+                            - bb3
+                            - c16
+                    bb1:
+                        allow:
+                        deny:
+                            - t7
+                            - t8
+                            - t9
+                            - t10
+                            - c16
+                    bb2:
+                        allow:
+                        deny:
+                            - t7
+                            - t8
+                            - t9
+                            - t10
+                            - c16
+                    bb3:
+                        allow:
+                        deny:
+                            - t7
+                            - t8
+                            - t9
+                            - t10
+                            - c16
+                    bb4:
+                        allow:
+                        deny:
+                            - t7
+                            - t8
+                            - t9
+                            - t10
+                            - c16
+                    c14:
+                        allow:
+                        deny:
+                            - t7
+                            - t8
+                            - t9
+                            - t10
+                    c15:
+                        allow:
+                        deny:
+                            - t7
+                            - t8
+                            - t9
+                    c16:
+                        allow:
+                        deny:
+                            - t7
+                            - t9
+                            - t10
+                            - BB1
+                            - BB3
+                            - BB4
+                            - BB6
+            hosts:
+                rr22:
+                rr23:

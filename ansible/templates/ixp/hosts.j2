@@ -1,0 +1,39 @@
+{% set id = (inventory_hostname | regex_search('[0-9]+')) %}
+{% set network = '%s.%s.0.0/16' | format(id, id) %}
+switchport default mode routed
+!
+hostname {{ inventory_hostname | upper }}
+!
+interface {{ ixp_interface }}
+   ip address {{ ixp_network | ansible.utils.ipaddr(id) }}
+!
+interface Loopback0
+   ip address {{ network | ansible.utils.ipaddr(1) }}
+!
+ip routing
+!
+{% set neighbor_hostname =  (groups.ixp | map('extract', hostvars) | selectattr('ixp_role', 'eq', 'rs') | map(attribute='inventory_hostname'))[0] %}
+{% set neighbor_id = (neighbor_hostname | regex_search('[0-9]+')) %}
+{% set neighbor = ixp_network | ansible.utils.ipaddr(neighbor_id) | ansible.utils.ipaddr('address') %}
+{% if inventory_hostname[0] == 'c' -%}
+ip as-path access-list LOCAL permit ^$ any
+!
+route-map LOCAL permit 10
+   match as-path LOCAL
+!
+{% endif -%}
+router bgp {{ asn }}
+   router-id {{ network | ansible.utils.ipaddr(1) | ansible.utils.ipaddr('address') }}
+   no bgp default ipv4-unicast
+   neighbor {{ neighbor }} remote-as {{ hostvars[neighbor_hostname].asn }}
+   neighbor {{ neighbor }} description {{ neighbor_hostname | upper }}
+   no neighbor {{ neighbor }} enforce-first-as
+   !
+   address-family ipv4
+      neighbor {{ neighbor }} activate
+      neighbor {{ neighbor }} route-map LOCAL out
+      {% if inventory_hostname[0] == 'c' -%}
+      neighbor RR route-map LOCAL out
+      {% endif -%}
+      network {{ network }}
+!

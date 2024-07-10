@@ -1,0 +1,17 @@
+- name: Deploy BB config
+  hosts: bb
+  gather_facts: false
+  tasks:
+    - name: Deploy config
+      arista.eos.eos_config:
+        src: templates/underlay/bb.j2
+        save_when: changed
+
+- name: Deploy RR config
+  hosts: rr
+  gather_facts: false
+  tasks:
+    - name: Deploy config
+      arista.eos.eos_config:
+        src: templates/underlay/rr.j2
+        save_when: changed

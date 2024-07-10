@@ -1,0 +1,33 @@
+{% set id = inventory_hostname | regex_search('[0-9]+') %}
+switchport default mode routed
+!
+hostname {{ inventory_hostname | upper }}
+!
+interface {{ ixp_interface }}
+   ip address {{ ixp_network | ansible.utils.ipaddr(id) }}
+!
+ip routing
+!
+router bgp {{ asn }}
+   router-id {{ ixp_network | ansible.utils.ipaddr(id) | ansible.utils.ipaddr('address') }}
+   no bgp default ipv4-unicast
+   no bgp enforce-first-as
+   bgp route-reflector preserve-attributes always
+   bgp next-hop-unchanged
+   neighbor IXP peer group
+   neighbor IXP next-hop-unchanged
+   neighbor IXP as-path prepend-own disabled
+   neighbor IXP passive
+   {% for item in groups.ixp -%}
+   {% if inventory_hostname != item -%}
+   {% set neighbor_id = item | regex_search('[0-9]+') %}
+   {% set neighbor = ixp_network | ansible.utils.ipaddr(neighbor_id) | ansible.utils.ipaddr('address') %}
+   neighbor {{ neighbor }} peer group IXP
+   neighbor {{ neighbor }} remote-as {{ hostvars[item].asn }}
+   neighbor {{ neighbor }} description {{ item | upper }}
+   {% endif -%}
+   {% endfor -%}
+   !
+   address-family ipv4
+      neighbor IXP activate
+!
